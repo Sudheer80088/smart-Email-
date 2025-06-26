@@ -1,4 +1,7 @@
+from pathlib import Path
 
+# Updated frontend HTML with working schedule time handling
+updated_frontend_with_schedule = """
 <!DOCTYPE html>
 <html>
 <head>
@@ -86,7 +89,7 @@
 
       const reader = new FileReader();
       reader.onload = function(e) {
-        const lines = e.target.result.split(/\r\n|\n/);
+        const lines = e.target.result.split(/\\r\\n|\\n/);
         const header = lines[0].split(',');
         const emailIndex = header.findIndex(col => col.trim().toLowerCase() === 'email');
         const nameIndex = header.findIndex(col => col.trim().toLowerCase() === 'name');
@@ -108,7 +111,7 @@
 
           if (!email) continue;
 
-          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          const emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
           if (!emailRegex.test(email)) {
             invalidEmails.push(email);
           } else if (seen.has(email)) {
@@ -136,7 +139,7 @@
 
     function countWords() {
       const text = document.getElementById("message").value;
-      const words = text.trim().split(/\s+/);
+      const words = text.trim().split(/\\s+/);
       const wordCount = text.trim() ? words.length : 0;
       document.getElementById("wordCount").innerText = \`Word Count: \${wordCount} / 100\`;
       if (wordCount > 100) {
@@ -156,7 +159,7 @@
         alert("Please upload a valid file with at least one valid email.");
         return;
       }
-      const words = message.trim().split(/\s+/);
+      const words = message.trim().split(/\\s+/);
       if (!message.trim() || words.length > 100) {
         alert("Message is empty or exceeds 100-word limit.");
         return;
@@ -174,12 +177,13 @@
         body: JSON.stringify({
           emails: validEmails,
           subject: "Smart Email Sender",
-          message: message
+          message: message,
+          schedule: dateTime
         })
       })
       .then(res => res.json())
       .then(data => {
-        alert("✅ Emails scheduled successfully!");
+        alert("✅ Emails scheduled successfully for: " + dateTime);
         console.log(data);
       })
       .catch(err => {
@@ -191,3 +195,9 @@
 
 </body>
 </html>
+"""
+
+# Save the updated frontend file
+scheduled_frontend_path = "/mnt/data/smart_email_sender_with_schedule.html"
+Path(scheduled_frontend_path).write_text(updated_frontend_with_schedule)
+scheduled_frontend_path
