@@ -12,7 +12,6 @@ app.secret_key = 'your_secret_key'
 app.config['SESSION_TYPE'] = 'filesystem'
 Session(app)
 
-# Path to your downloaded OAuth client secrets file
 GOOGLE_CLIENT_SECRETS_FILE = "client_secret.json"
 SCOPES = ["https://www.googleapis.com/auth/gmail.send", "https://www.googleapis.com/auth/userinfo.email"]
 
@@ -52,7 +51,6 @@ def oauth2callback():
         'scopes': credentials.scopes
     }
 
-    # Get user email
     service = build('oauth2', 'v2', credentials=credentials)
     user_info = service.userinfo().get().execute()
     session['user_email'] = user_info['email']
@@ -99,12 +97,19 @@ def send_emails():
     emails = data.get('emails', [])
     subject = data.get('subject', 'Smart Email Sender')
     message = data.get('message', '')
+    schedule_time = data.get('schedule')
+
+    print(f"🕒 Schedule time received: {schedule_time}")  # Log schedule
 
     results = []
     for entry in emails:
         to_email = entry['email']
         name = entry.get('name', '')
         personalized_message = message.replace('{First Name}', name or 'there')
+
+        print(f"Sending to: {to_email}")
+        print(f"Message: {personalized_message}")
+
         result = send_email(
             user_id=session['user_email'],
             creds_dict=session['credentials'],
@@ -112,9 +117,11 @@ def send_emails():
             subject=subject,
             message_text=personalized_message
         )
+
+        print(result)
         results.append({'to': to_email, 'result': result})
 
-    return jsonify({'status': 'done', 'results': results})
+    return jsonify({'status': 'done', 'results': results, 'schedule': schedule_time})
 
 if __name__ == '__main__':
     app.run(debug=True)
