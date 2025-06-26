@@ -1,0 +1,193 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Smart Email Sender - Quickhire.com</title>
+  <meta charset="UTF-8">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    body {
+      font-family: Arial;
+      max-width: 600px;
+      margin: auto;
+      padding: 20px;
+      background-color: #f2f2f2;
+    }
+    h2 {
+      text-align: center;
+      color: #003366;
+    }
+    input, textarea, button, select {
+      width: 100%;
+      margin: 10px 0;
+      padding: 10px;
+      font-size: 16px;
+    }
+    .summary {
+      background: #fff;
+      padding: 10px;
+      border-radius: 8px;
+    }
+    .note {
+      font-size: 13px;
+      color: gray;
+    }
+    #user-info {
+      background-color: #e6f7ff;
+      padding: 10px;
+      border-radius: 6px;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>🚀 Quickhire.com - Smart Email Sender</h2>
+
+  <div id="g_id_onload"
+       data-client_id="841857627256-u5fu16klqnr4d78l3u14nlc57i47dfuv.apps.googleusercontent.com"
+       data-callback="handleGoogleLogin"
+       data-auto_prompt="false">
+  </div>
+
+  <div class="g_id_signin" data-type="standard"></div>
+
+  <div id="user-info"></div>
+
+  <label for="emailFile">Upload Email File (.csv):</label>
+  <input type="file" id="emailFile" accept=".csv" onchange="handleFile()" />
+  <div class="note">* Required column: Email | Optional: Name</div>
+
+  <label for="message">Email Message (≤ 100 words):</label>
+  <textarea id="message" rows="5" maxlength="1000" oninput="countWords()"></textarea>
+  <div id="wordCount" class="note">Word Count: 0 / 100</div>
+
+  <label for="scheduleTime">Schedule Date & Time:</label>
+  <input type="datetime-local" id="scheduleTime" />
+
+  <button onclick="submitForm()">✅ Schedule Email Campaign</button>
+
+  <div id="summary" class="summary"></div>
+
+  <script>
+    let validEmails = [], invalidEmails = [], duplicateEmails = [];
+    let userEmail = "", accessToken = "";
+
+    function handleGoogleLogin(response) {
+      const jwt = JSON.parse(atob(response.credential.split('.')[1]));
+      userEmail = jwt.email;
+      accessToken = response.credential;
+      document.getElementById('user-info').innerHTML = `👋 Hello, ${jwt.name} (${userEmail})`;
+    }
+
+    function handleFile() {
+      const file = document.getElementById('emailFile').files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const lines = e.target.result.split(/\r\n|\n/);
+        const header = lines[0].split(',');
+        const emailIndex = header.findIndex(col => col.trim().toLowerCase() === 'email');
+        const nameIndex = header.findIndex(col => col.trim().toLowerCase() === 'name');
+
+        if (emailIndex === -1) {
+          alert("CSV must include an 'Email' column.");
+          return;
+        }
+
+        const seen = new Set();
+        validEmails = [];
+        invalidEmails = [];
+        duplicateEmails = [];
+
+        for (let i = 1; i < lines.length; i++) {
+          const cols = lines[i].split(',');
+          const email = cols[emailIndex]?.trim();
+          const name = cols[nameIndex]?.trim() || "";
+
+          if (!email) continue;
+
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(email)) {
+            invalidEmails.push(email);
+          } else if (seen.has(email)) {
+            duplicateEmails.push(email);
+          } else {
+            validEmails.push({ email, name });
+            seen.add(email);
+          }
+        }
+
+        showSummary();
+      };
+
+      reader.readAsText(file);
+    }
+
+    function showSummary() {
+      document.getElementById("summary").innerHTML = `
+        <h3>📊 Validation Summary</h3>
+        ✅ Valid Emails: ${validEmails.length}<br>
+        ❌ Invalid Emails: ${invalidEmails.length}<br>
+        🔁 Duplicates: ${duplicateEmails.length}<br>
+      `;
+    }
+
+    function countWords() {
+      const text = document.getElementById("message").value;
+      const words = text.trim().split(/\s+/);
+      const wordCount = text.trim() ? words.length : 0;
+      document.getElementById("wordCount").innerText = \`Word Count: \${wordCount} / 100\`;
+      if (wordCount > 100) {
+        alert("Limit exceeded! Max 100 words.");
+      }
+    }
+
+    function submitForm() {
+      const message = document.getElementById("message").value;
+      const dateTime = document.getElementById("scheduleTime").value;
+
+      if (!userEmail || !accessToken) {
+        alert("Please sign in with Google first.");
+        return;
+      }
+      if (!validEmails.length) {
+        alert("Please upload a valid file with at least one valid email.");
+        return;
+      }
+      const words = message.trim().split(/\s+/);
+      if (!message.trim() || words.length > 100) {
+        alert("Message is empty or exceeds 100-word limit.");
+        return;
+      }
+      if (!dateTime) {
+        alert("Please select a schedule time.");
+        return;
+      }
+
+      fetch("http://localhost:5000/send_emails", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          emails: validEmails,
+          subject: "Smart Email Sender",
+          message: message
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        alert("✅ Emails scheduled successfully!");
+        console.log(data);
+      })
+      .catch(err => {
+        alert("❌ Failed to schedule emails.");
+        console.error(err);
+      });
+    }
+  </script>
+
+</body>
+</html>
