@@ -1,4 +1,3 @@
-python backend_with_schedule_log_debug.py
 from flask import Flask, request, redirect, session, url_for, jsonify
 from flask_session import Session
 from google_auth_oauthlib.flow import Flow
